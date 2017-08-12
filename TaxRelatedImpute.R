@@ -85,26 +85,28 @@ taxcols=train_data %>%  dplyr::select(id_parcel,tax_total, #taxvaluedollarcnt,
                       tax_delinquency_year # = taxdelinquencyyear,
 ) 
 
-
+####################################################################
 #convert ID to character
 taxcols$id_parcel=as.character(taxcols$id_parcel)
 
 #summary
 summary(taxcols)
 
+####################################################################
 #tax_delinquency
 #????drop, overlap with tax_delinquency_year
 #taxcols$tax_delinquency=as.factor(taxcols$tax_delinquency)
 #convert to 0/1 factors
 taxcols$tax_delinquency=as.factor(ifelse(is.na(taxcols$tax_delinquency),'0','1'))
   
+####################################################################
 #drop tax year column  
 taxcols= taxcols %>% dplyr::select(-tax_year)
 
+####################################################################
 #tax_delinquency_year
 #taxcols$tax_delinquency_year=as.factor(taxcols$tax_delinquency_year)
 taxcols %>% group_by(tax_delinquency_year) %>% count()
-
 ggplot(data.frame(logerror = train_data$logerror, deck=as.factor(train_data$tax_delinquency_year)), aes(x=logerror, color=deck, fill=deck)) +
   geom_line(stat="density") +
   theme_bw()
@@ -112,6 +114,38 @@ ggplot(data.frame(logerror = train_data$logerror, deck=as.factor(train_data$tax_
 #impuate NA as 0
 taxcols$tax_delinquency_year=ifelse(is.na(taxcols$tax_delinquency_year)
                                     ,0,taxcols$tax_delinquency_year)
+
+####################################################################
+#tax_total and tax_land missing for this 1 record
+#impute tax_land as 0, tax_tatal = sum(tax_building,tax_land)
+
+a=train_data[is.na(taxcols$tax_building),] #380 obs in tax columns with building tax missing
+b=train_data %>% group_by(ifelse(is.na(taxcols$tax_building),'0','1'),zoning_landuse) %>% count()
+
+#tax_building missing values with the 2 no-bulding zones 
+# reduced to 239 missing value, 61 imputed as 0
+taxcols$tax_building=ifelse(as.character(train_data$zoning_landuse) %in% c('275','269')  
+                            & is.na(taxcols$tax_building),0,taxcols$tax_building)
+
+#for missing building tax with number of bathroom and bedroom as 0
+#impute to 0
+# reduced to 69 missing values, 170 imputed as 0
+taxcols$tax_building=ifelse(train_data$num_bathroom==0 
+                            & train_data$num_bedroom==0
+                            & is.na(taxcols$tax_building),0,taxcols$tax_building)
+
+
+summary(taxcols)
+ggplot(data.frame(logerror = train_data$logerror, deck=as.factor(ifelse(is.na(train_data$tax_building),'0','1'))), aes(x=logerror, color=deck, fill=deck)) +
+  geom_line(stat="density") +
+  theme_bw()
+
+#there is still impact on log error
+#remaining to be impute with ramdom forest
+####################################################################
+#tax_property
+c=train_data[is.na(taxcols$tax_property),]
+#6 missing, random forest
 
 
 #plot pattern
