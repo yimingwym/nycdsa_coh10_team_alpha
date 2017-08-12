@@ -1,0 +1,28 @@
+basementsqft
+bedroomcnt
+finishedsquarefeet12
+fullbathcnt
+garagecarcnt
+longitude
+propertylandusetypeid
+propertyzoningdesc
+regionidcounty
+regionidzip
+taxvaluedollarcnt -
+censustractandblock - the level is too many - throw away
+logerror -no missing
+date -  useless
+
+area_basement- remove
+num_bedroom - impuate as 0
+area_live_finished - seems Related with garage
+num_bath - missing at ramdom
+num_garage - impute as 0 when zoning is not missing- related with zoning missing
+longitude -rarely missing
+zoning_landuse - rarely missing
+zoning_property - rarely missing
+region_county-rarely missing
+region_zip - rarely missing
+tax_total - related with zoning_landuse - impute as 0 when landuse is not missing
+censustractandblock
+
