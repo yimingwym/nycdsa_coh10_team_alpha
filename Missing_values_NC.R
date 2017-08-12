@@ -1,69 +1,75 @@
-#architecturalstyletypeid - remove 
 
-properties <- select(properties, -architectural_style)
+#architecturalstyletypeid - convert to factor add level for NA
 
-#quality - missing values relate to newer houses. In addition, newer houses have also lower mean scores - impute random
+properties[,c('architectural_style')] <- lapply(properties[,c('architectural_style')], factor, exclude=NULL)
 
-properties %>% mutate(., as.factor(properties$quality))
-plyr::count(is.na(properties$quality))
 
-#area_total_finished - impute based on area_total_calc
+#quality - convert to factor add level for NA
+
+properties[,c('quality')] <- lapply(properties[,c('quality')], factor, exclude=NULL)
+
+
+#area_total_finished - impute based on area_total_calc, impute missingness with package
 
 properties = properties %>% mutate(area_total_finished = ifelse(is.na(area_total_finished),area_total_calc, area_total_finished))
 
-#num_bathroom_calc - impute based on num_bathroom (already equal, only not for the NA's)
+#num_bathroom_calc/num_75_bath/num_bath/num_bathroom - impute based on num_bathroom (already equal, only not for the NA's)
+#convert to int
 
-properties %>% mutate(num_bathroom_calc= ifelse(is.na(num_bathroom_calc), num_bathroom, num_bathroom_calc))
+properties[,c('num_bathroom_calc')] <- lapply(properties[,c('num_bathroom_calc')], as.integer)
+properties[,c('num_bathroom')] <- lapply(properties[,c('num_bathroom')], as.integer)
 
 
-#area_total_calc -remove outliers 
+properties = properties %>% mutate(num_bathroom_calc= ifelse(is.na(num_bathroom_calc), num_bathroom, num_bathroom_calc))
+properties = properties %>% mutate(num_75_bath= ifelse(is.na(num_75_bath), 0, num_75_bath))
+properties = properties %>% mutate(num_bath= ifelse(is.na(num_bath), num_bathroom, num_bath))
 
-plyr::count(is.na(properties$area_total_calc))
 
-#finishedsquarefeet13 - remove, only 33 TRUE and high multicollinearity
+#area_total_calc -impute at random OR DELETE outliers
+
+#finishedsquarefeet13 - remove, only 33 TRUE and high multicollinearity - DROP
+
 properties <- select(properties, -area_liveperi_finished)
-
-summary(properties2$area_total_finished)
 
 #fips - no missingness
 
 #num_fireplace - impute with 0 (mnar)
 
-properties %>% mutate(num_fireplace= ifelse(is.na(num_fireplace), 0, num_fireplace))
+properties = properties %>% mutate(num_fireplace= ifelse(is.na(num_fireplace), 0, num_fireplace))
 
 #flag_tub - convert to 1&0, input 1 if true, zero if else
 
+properties = properties %>% mutate(., flag_tub = ifelse(flag_tub=="true",1,0))
 
-properties$flag_tub = ifelse(is.na(properties$flag_tub),0,1)
+properties[,c('flag_tub')] <- lapply(properties[,c('flag_tub')], factor, exclude=NULL)
 
 
 #pooltypeid10 - spa or hottub? impute with 0 
 
-
 properties$pooltypeid10 = ifelse(is.na(properties$pooltypeid10),0,1)
+
+properties[,c('pooltypeid10')] <- lapply(properties[,c('pooltypeid10')], factor, exclude=NULL)
 
 
 #rawcensustractandblock - no missingness
 
-#story - remove, however does imply having a basement 
+#story - remove, however does imply having a basement - delete
 
 properties <- select(properties, -story)
 
 #threequarterbathnbr - impute at 0.every of these houses has a bathroom, hence it is expected that these are indeed 0 
 
 
-#unitcnt - impute based on number of stories or mode. 
-plyr::count(is.na(properties$unitcnt))
+#unitcnt - convert to factor and level for na
 
-properties %>% group_by(., unitcnt, numberofstories) %>% summarise(., total=n()) %>% filter(., is.na(unitcnt))
+properties[,c('unitcnt')] <- lapply(properties[,c('unitcnt')], factor, exclude=NULL)
 
-#yearbuilt - remove outliers, also have 0 rooms and 0 batrooms, outliers
-plyr::count(is.na(properties$yearbuilt))
+levels(properties$unitcnt)
 
-properties %>% dplyr::filter(., is.na(properties$yearbuilt)) 
-properties_yearbuilt %>% group_by(., roomcnt) %>% summarise(., total=n()) 
+#yearbuilt - impute at random
+ 
 
-#fireplaceflag - remove, has no extra info over fireplacecnt
-properties <- select(properties, -story)
+#flag_fireplace - remove, has no extra info over fireplacecnt
+properties <- select(properties, -flag_fireplace)
 
 
