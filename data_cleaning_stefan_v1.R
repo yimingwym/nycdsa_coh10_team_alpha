@@ -89,17 +89,17 @@ sales = as.data.table(
 clean = data.table(id_parcel = sales$id_parcel, date=as.Date(sales$date), logerror=sales$logerror, abslogerror=abs(sales$logerror))
 imp = data.table(id_parcel = sales$id_parcel, logerror=sales$logerror, abslogerror=abs(sales$logerror))
 
+
+#del tax_year all the same
+# tax_delinquency 0,1 beibehalten
+
+
 ################################################
 ##  build_year
 
 imp$build_year_isna = is.na(sales$build_year)
 clean$build_year = ifelse(imp$build_year_isna, 0, sales$build_year)
 
-
-################################################
-##  decktypeid (deck)
-
-clean$deck = as.factor(ifelse(is.na(sales$deck), 0, sales$deck))
 
 ################################################
 ##  garagetotalsqft (area_garage)
@@ -308,12 +308,51 @@ clean$num_75_bath = ifelse(imp$num_75_bath_isna, 0, sales$num_75_bath)
 imp$num_fireplace_isna = is.na(sales$num_fireplace)
 clean$num_fireplace = ifelse(imp$num_fireplace_isna, 0, sales$num_fireplace)
 
-# consider flag_fireplace in num_fireplace
+imp$num_fireplace_1 = is.na(sales$num_fireplace) & sales$flag_fireplace=="true"
+clean$num_fireplace = ifelse(imp$num_fireplace_1, 1, clean$num_fireplace)
 
+################################################
+##  tax_total
+##  tax_building
+##  tax_land
+##  tax_property
+##  tax_year
+##  tax_delinquency
+##  tax_delinquency_year
+##
+
+imp$tax_total_isna = is.na(sales$tax_total)
+clean$tax_total = ifelse(imp$tax_total_isna, 0, sales$tax_total)
+
+imp$tax_building_isna = is.na(sales$tax_building)
+clean$tax_building = ifelse(imp$tax_building_isna, 0, sales$tax_building)
+
+imp$tax_land_isna = is.na(sales$tax_land)
+clean$tax_land = ifelse(imp$tax_land_isna, 0, sales$tax_land)
+
+imp$tax_property_isna = is.na(sales$tax_property)
+clean$tax_property = ifelse(imp$tax_property_isna, 0, sales$tax_property)
+
+# tax_year has always the same value; drop it;
+
+clean$tax_delinquency = ifelse(sales$tax_delinquency=="Y", 1, 0)
+
+imp$tax_delinquency_year_isna = is.na(sales$tax_delinquency_year)
+clean$tax_delinquency_year = ifelse(imp$tax_delinquency_year_isna, 0, sales$tax_delinquency_year)
+
+#imp$_isna = is.na(sales$)
+#clean$ = ifelse(imp$_isna, 0, sales$)
 
 ################################################
 ##  material
-##
+##  deck
+##  quality
+##  framing
+##  story
+##  heating
+##  aircon
+##  architectural_style
+##  flag_tub
 
 clean$material = ifelse(is.na(sales$material), 0 , sales$material)
 
@@ -321,32 +360,39 @@ clean$material = factor(clean$material, 0:18, labels=c('NA', 'Adobe', 'Brick', '
                                                        'Heavy', 'Log', 'Light', 'Metal', 'Manufactured', 'Mixed', 'Masonry', 
                                                        'Other', 'Steel', 'Stone', 'Tilt-Up', 'Wood'))
 
+clean$deck = as.factor(ifelse(is.na(sales$deck), 0, sales$deck))
+
+clean$quality = as.factor(ifelse(is.na(sales$quality), 0, sales$quality))
+
+clean$framing = as.factor(ifelse(is.na(sales$framing), 0, sales$framing))
+
+clean$story = as.factor(ifelse(is.na(sales$story), 0, sales$story))
+
+clean$heating = as.factor(ifelse(is.na(sales$heating), 0, sales$heating))
+
+clean$aircon = as.factor(ifelse(is.na(sales$aircon), 0, sales$aircon))
+
+clean$architectural_style = as.factor(ifelse(is.na(sales$architectural_style), 0, sales$architectural_style))
+
+clean$flag_tub = ifelse(sales$flag_tub=="true", 1, 0)
 
 
+################################################
+##  longitude
+##  latitude
 
+clean$longitude = sales$longitude
+clean$latitude = sales$latitude
 
+################################################
+##  censustractandblock
+##  
 
-
-
-
-
-
+clean$censustractandblock = sales$censustractandblock
 
 ############################################################################################
 ############################################################################################
 ############################################################################################
 
 
-ggplot(data.frame(logerror = abs(sales$logerror), isna=as.factor(imp$area_garage_1)), aes(x=logerror, color=isna, fill=isna)) + 
-  geom_line(stat="density") +
-  theme_bw()+scale_fill_brewer(palette="Set1")+scale_color_brewer(palette="Set1") +
-  coord_cartesian(xlim=c(-0.5, 0.5))
-
-
-
-sales %>% filter(abs(logerror)>0.5) %>% summarize(n())
-
-imp[,.(mean(abs(logerror)), length(id_parcel)),by=region_city]
-
-clean[,.(mean(abs(logerror)), length(id_parcel)),by=region_county]
 
