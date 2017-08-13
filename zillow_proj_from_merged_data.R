@@ -2,8 +2,6 @@
 ##### The information is extracted from rawcensustractandblock, you can run the code on your computer.
 ##### After the extraction, the rawcensustractandblock column is removed because we don't need to use it any more.
 
-library(dplyr)
-##############
 merged_data <- read.csv('merged_data.csv')
 merged_data$X <- NULL
 length(unique(merged_data$rawcensustractandblock))
