@@ -16,7 +16,7 @@ library(lubridate)
 
 properties <- fread('./data/properties_2016.csv')
 transactions <- fread('./data/train_2016_v2.csv')
-sample_submission <- fread('./data/sample_submission.csv')
+#sample_submission <- fread('./data/sample_submission.csv')
 
 properties <- properties %>% rename(
   id_parcel = parcelid,
@@ -86,12 +86,9 @@ sales = as.data.table(
   inner_join(properties, by="id_parcel")
 )
 
-clean = data.table(id_parcel = sales$id_parcel, date=as.Date(sales$date), logerror=sales$logerror, abslogerror=abs(sales$logerror))
-imp = data.table(id_parcel = sales$id_parcel, logerror=sales$logerror, abslogerror=abs(sales$logerror))
+clean = data.table(id_parcel = sales$id_parcel, date=as.Date(sales$date), logerror=sales$logerror)
+imp = data.table(id_parcel = sales$id_parcel)
 
-
-#del tax_year all the same
-# tax_delinquency 0,1 beibehalten
 
 
 ################################################
@@ -244,16 +241,16 @@ clean$pooltypeid10 = ifelse(imp$pooltypeid10_isna, 0, sales$pooltypeid10)
 ##
 
 imp$region_city_isna = is.na(sales$region_city)
-clean$region_city = as.factor(ifelse(imp$region_city_isna, 0, sales$region_city))
+clean$region_city = as.integer(as.factor(ifelse(imp$region_city_isna, 0, sales$region_city)))
 
 imp$region_neighbor_isna = is.na(sales$region_neighbor)
-clean$region_neighbor = as.factor(ifelse(imp$region_neighbor_isna, 0, sales$region_neighbor))
+clean$region_neighbor = as.integer(as.factor(ifelse(imp$region_neighbor_isna, 0, sales$region_neighbor)))
 
 imp$region_county_isna = is.na(sales$region_county)
 clean$region_county = as.factor(ifelse(imp$region_county_isna, 0, sales$region_county))
 
 imp$region_zip_isna = is.na(sales$region_zip)
-clean$region_zip = as.factor(ifelse(imp$region_zip_isna, 0, sales$region_zip))
+clean$region_zip = as.integer(as.factor(ifelse(imp$region_zip_isna, 0, sales$region_zip)))
 
 ################################################
 ##  zoning_landuse_county
@@ -261,14 +258,13 @@ clean$region_zip = as.factor(ifelse(imp$region_zip_isna, 0, sales$region_zip))
 ##  zoning_property
 
 # no missing values
-clean$zoning_landuse_county = as.factor(sales$zoning_landuse_county)
+clean$zoning_landuse_county = as.integer(as.factor(sales$zoning_landuse_county))
 
 # no missing values
 clean$zoning_landuse = as.factor(sales$zoning_landuse)
 
 # no missing values
-clean$zoning_property = as.factor(sales$zoning_property)
-
+clean$zoning_property = as.integer(as.factor(sales$zoning_property))
 
 ################################################
 ##  num_room
@@ -388,11 +384,19 @@ clean$latitude = sales$latitude
 ##  censustractandblock
 ##  
 
-clean$censustractandblock = sales$censustractandblock
+clean$censustractandblock = as.integer(as.factor(sales$censustractandblock))
 
 ############################################################################################
 ############################################################################################
 ############################################################################################
 
 
+# missing_values <- clean %>% summarize_each(funs(sum(is.na(.))/n()))
+# 
+# missing_values <- gather(missing_values, key="feature", value="missing_pct")
+# missing_values %>% 
+#   ggplot(aes(x=reorder(feature,-missing_pct),y=missing_pct)) +
+#   geom_bar(stat="identity",fill="red")+
+#   coord_flip()+theme_bw()
+# 
 
