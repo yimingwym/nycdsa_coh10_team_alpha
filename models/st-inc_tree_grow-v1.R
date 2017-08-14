@@ -16,7 +16,7 @@ train_inx = sample(1:nrow(all_data), nrow(all_data)*0.7)
 selectedColNames = character()
 
 remainingColNames = colnames(all_data)
-remainingColNames = allColNames[-which(remainingColNames %in% c("id_parcel", "logerror", selectedColNames))]
+remainingColNames = remainingColNames[-which(remainingColNames %in% c("id_parcel", "logerror", "fips_blockid", selectedColNames))]
 
 bestError = 1000
 while (length(remainingColNames>0))
@@ -30,7 +30,7 @@ while (length(remainingColNames>0))
     train_data = all_data[train_inx, c(testColNames, "logerror")]
     test_data = all_data[-train_inx, c(testColNames, "logerror")]
     
-    testModel= rpart(logerror ~ ., data = train_data, method='anova')
+    testModel= rpart(logerror ~ ., data = train_data, method='anova', control = rpart.control(cp = 0.001))
 
     prediction = predict(testModel, test_data)
     err = median(abs(test_data$logerror - prediction))
@@ -42,10 +42,12 @@ while (length(remainingColNames>0))
     print(err)
   }
   selectedColNames = c(selectedColNames, bestCol)
-  remainingColNames = remainingColNames = allColNames[-which(remainingColNames==bestCol)]
+  remainingColNames = remainingColNames[-which(remainingColNames==bestCol)]
   
-  if (bestError>minError)
+  if (bestError>minError){
     bestError = minError
+    cat(paste0("new bestError: ", bestError, collapse = ""))
+  }
   else
     break
 }
@@ -54,5 +56,3 @@ print("best error:")
 bestError
 print("selected columns:")
 selectedColNames
-
-# NO COLUMN CAN BE FOUND !!!!!
