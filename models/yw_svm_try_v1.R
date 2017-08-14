@@ -1,6 +1,6 @@
 # I only tested 1000*0.7 rows in here. took me around 10 min.
 # R squre = 0.08 << 1, median abs error = 0.036
-# I'll to re-run this code with modified full training set & Gaussian kernel.
+# I'll re-run this code with modified full training set & Gaussian kernel.
 
 library(e1071)
 
