@@ -156,4 +156,5 @@ aggr(taxcols, labels=names(taxcols), cex.axis=.5,
 
 a=taxcols[is.na(taxcols$tax_building),]
 
+write.csv(taxcols, file = "~/Desktop/TaxData.csv")
 
