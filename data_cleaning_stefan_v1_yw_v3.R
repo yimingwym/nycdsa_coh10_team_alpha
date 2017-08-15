@@ -120,18 +120,18 @@ avg_garage_area = (properties %>%
 
 print(paste0("avg. garage area: ", avg_garage_area))
 
-imp$num_garage_1 = clean$area_garage>0 & clean$num_garage==0
+imp$num_garage_1_new = clean$area_garage>0 & clean$num_garage==0
 
 clean$num_garage_1 = ifelse(
-  imp$num_garage_1, 
+  imp$num_garage_1_new, 
   1, 
   clean$num_garage
 )
 
-imp$area_garage_1 = clean$num_garage>0 & clean$area_garage==0
+imp$area_garage_1_new = clean$num_garage>0 & clean$area_garage==0
 
 clean$area_garage_1 =  ifelse(
-  imp$area_garage_1,
+  imp$area_garage_1_new,
   clean$num_garage * avg_garage_area,
   clean$area_garage
 )     
@@ -210,18 +210,18 @@ avg_pool_area = (properties %>%
 print(paste0("avg. pool area: ", avg_pool_area))
 
 
-imp$num_pool_1 = clean$area_pool>0 & clean$num_pool==0
+imp$num_pool_1_new = clean$area_pool>0 & clean$num_pool==0
 
 clean$num_pool_1 = ifelse(
-  imp$num_pool_1, 
+  imp$num_pool_1_new, 
   1, 
   clean$num_pool
 )
 
-imp$area_pool_1 = clean$num_pool>0 & clean$area_pool==0
+imp$area_pool_1_new = clean$num_pool>0 & clean$area_pool==0
 
 clean$area_pool_1 =  ifelse(
-  imp$area_pool_1,
+  imp$area_pool_1_new,
   clean$num_pool * avg_pool_area,
   clean$area_pool
 )     
@@ -307,8 +307,8 @@ clean$num_75_bath = ifelse(imp$num_75_bath_isna, 0, sales$num_75_bath)
 imp$num_fireplace_isna = is.na(sales$num_fireplace)
 clean$num_fireplace = ifelse(imp$num_fireplace_isna, 0, sales$num_fireplace)
 
-imp$num_fireplace_1 = is.na(sales$num_fireplace) & sales$flag_fireplace=="true"
-clean$num_fireplace = ifelse(imp$num_fireplace_1, 1, clean$num_fireplace)
+imp$num_fireplace_imp = is.na(sales$num_fireplace) & sales$flag_fireplace=="true"
+clean$num_fireplace = ifelse(imp$num_fireplace_imp, 1, clean$num_fireplace)
 
 ################################################
 ##  tax_total
@@ -388,6 +388,12 @@ clean$latitude = sales$latitude
 ##  
 
 clean$censustractandblock = as.integer(as.factor(sales$censustractandblock))
+
+################################################
+##  clean-up
+##  
+rm(avg_garage_area)
+rm(avg_pool_area)
 
 ############################################################################################
 ############################################################################################
