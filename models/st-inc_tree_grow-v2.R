@@ -7,24 +7,15 @@ library(rpart)
 library(lubridate) 
 library(ade4)
 
-all_data = clean %>% inner_join(imp, by="id_parcel")
+all_data = cbind(clean, imp[,-1])
 
-all_data$month_factor = as.factor(month(all_data$date))
-all_data$month = month(all_data$date)
-all_data$num_garage_fac=as.factor(all_data$num_garage)
-all_data$num_garage_1_fac=as.factor(all_data$num_garage_1)
-all_data$num_pool_fac=as.factor(all_data$num_pool)
-all_data$num_pool_1_fac=as.factor(all_data$num_pool_1)
-all_data$num_room_fac=as.factor(all_data$num_room)
-all_data$num_story_fac=as.factor(all_data$num_story)
-all_data$num_unit_fac=as.factor(all_data$num_unit)
-all_data$num_bathroom_fac=as.factor(all_data$num_bathroom)
-all_data$num_bedroom_fac=as.factor(all_data$num_bedroom)
-all_data$num_bath_fac=as.factor(all_data$num_bath)
-all_data$num_75_bath_fac=as.factor(all_data$num_75_bath)
-all_data$num_fireplace_fac=as.factor(all_data$num_fireplace)
 
-all_data$is_zoning_landuse_county.10 = as.factor(all_data$zoning_landuse_county == 10)
+all_data$logerror_q3 = NULL
+
+#remove outlier
+all_data = all_data[logerror>-0.8 & logerror<0.8]
+
+#all_data$is_zoning_landuse_county.10 = as.factor(all_data$zoning_landuse_county == 10)
 
 set.seed(2344)
 train_inx = sample(1:nrow(all_data), nrow(all_data)*0.7)
@@ -38,6 +29,8 @@ selectedColNames = character()
 remainingColNames = colnames(all_data)
 remainingColNames = remainingColNames[-which(remainingColNames %in% c("id_parcel", "logerror", "fips_blockid", selectedColNames))]
 
+complexity_threshold = 0.001
+complexity_threshold_dec = 0
 bestError = 1000
 while (length(remainingColNames>0))
 {
@@ -47,16 +40,18 @@ while (length(remainingColNames>0))
     print(rn)
     testColNames = c(selectedColNames, rn)
     
-    train_data = all_data[train_inx, c(testColNames, "logerror")]
-    test_data = all_data[-train_inx, c(testColNames, "logerror")]
+    train_data = all_data[train_inx, c(testColNames, "logerror"), with=F]
+    test_data = all_data[-train_inx, c(testColNames, "logerror"), with=F]
     
     #train_data = filter(train_data, logerror>-0.5 & logerror<0.5)
     
-    testModel= rpart(logerror ~ ., data = train_data, method='anova', control = rpart.control(cp = 0.0001))
+    testModel= rpart(logerror ~ ., data = train_data, method='anova', control = rpart.control(cp = complexity_threshold))
 
     prediction = predict(testModel, test_data)
+    prediction = prediction[!is.na(prediction)]
     err = median(abs(test_data$logerror - prediction))
     if (err<minError){
+      print(paste0("new bestError: ", as.character(err), collapse = ""))
       minError = err
       bestCol = rn
     }
@@ -71,7 +66,13 @@ while (length(remainingColNames>0))
     print(paste0("selected column: ", bestCol, collapse = ""))
   }
   else
-    break
+  {
+    complexity_threshold_dec = complexity_threshold_dec + 1
+    if (complexity_threshold_dec>10)
+      break
+    cat("no best found, reduce complexity threshold: ", complexity_threshold_dec, "\n")
+    complexity_threshold = complexity_threshold -0.0005
+  }
   
   selectedColNames = c(selectedColNames, bestCol)
   remainingColNames = remainingColNames[-which(remainingColNames==bestCol)]
@@ -80,5 +81,7 @@ while (length(remainingColNames>0))
 cat("best error: ", bestError, "\n")
 cat("selected columns: ", selectedColNames, "\n")
 
+cat("baseline median abs err", median(abs(mean(all_data$logerror)-all_data$logerror)), "\n")
+cat("baseline mean abs err", mean(abs(mean(all_data$logerror)-all_data$logerror)), "\n")
 
 

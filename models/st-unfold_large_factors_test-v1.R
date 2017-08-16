@@ -2,10 +2,10 @@ library(rpart)
 library(lubridate) 
 library(ade4)
 
-all_data = clean %>% inner_join(imp, by="id_parcel")
+all_data = cbind(clean, imp[,-1])
 
 # GOBAL SETTING
-complexity_split_threshold = 0.001
+complexity_split_threshold = 0.1
 
 important_variables = character()
 
@@ -153,4 +153,6 @@ prediction = predict(testModel, test_data)
 
 median(abs(test_data$logerror - prediction))
 summary(testModel)
+
+important_variables = c(important_variables, names(testModel$variable.importance))
 # important: zoning_property.93
