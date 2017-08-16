@@ -22,30 +22,35 @@ imp$flag_fireplace=as.factor(imp$flag_fireplace)
 imp$flag_tub=as.factor(imp$flag_tub)
 imp$tax_delinquency=as.factor(imp$tax_delinquency)
 
+# #rename
+# colnames(imp)[c(30,31,34)]=c("id_parcel_1","area_total_calc_1","area_total_finished_1")
+# colnames(imp)[48]="id_parcel_2"
+
+#drop tag column
+imp=imp[-c(9,10,11,12)]
+
 #1
 #Creating the data matrices for the glmnet() function.
 x = model.matrix(logerror ~ ., imp)[, -1]
 y = imp$logerror
 
-#Creating training and test sets with an 80-20 split, respectively.
+#Creating training and test sets with an 70-30 split, respectively.
+library(ISLR)
+library(Matrix)
 set.seed(0)
-train = sample(1:nrow(x), 8*nrow(x)/10)
+train = sample(1:nrow(x), 7*nrow(x)/10)
 test = (-train)
 y.test = y[test]
 
 #Values of lambda over which to check.
-grid = 10^seq(5, -2, length = 100)
+grid = 10^seq(5, -5, length = 100)
 
-#Fitting the lasso regression. Alpha = 1 for lasso regression.
-lasso.models = glmnet(x[train, ], y[train], alpha = 1, lambda = grid)
+#Fitting the lasso regression
+lasso.models = glmnet(x[train, ], y[train], alpha = 1, lambda = grid,standardize=TRUE)
 
 plot(lasso.models, xvar = "lambda", label = TRUE, main = "Lasso Regression")
 
-#The coefficients all seem to shrink towards 0 as lambda gets quite large. All
-#coefficients seem to go to 0 once the log lambda value gets to about 0. We
-#note that in the lasso regression scenario, coefficients are necessarily set
-#to exactly 0.
-
+#cvalidate for best lambda
 set.seed(0)
 cv.lasso.out = cv.glmnet(x[train, ], y[train], alpha = 1, nfolds = 10, lambda = grid)
 plot(cv.lasso.out, main = "Lasso Regression\n")
@@ -53,34 +58,23 @@ bestlambda.lasso = cv.lasso.out$lambda.min
 bestlambda.lasso
 log(bestlambda.lasso)
 
-#The error seems to be reduced with a log lambda value of around -3.3027; this
-#corresponts to a lambda value of about 0.038. This is the value of lambda
-#we should move forward with in our future analyses.
+#The error seems to be reduced with a log lambda value of around -8.489329; this
+#corresponts to a lambda value of about 0.0002056512.
 
 lasso.bestlambdatrain = predict(lasso.models, s = bestlambda.lasso, newx = x[test, ])
 mean((lasso.bestlambdatrain - y.test)^2)
+#The test MSE is about 0.02758232.
 
-#The test MSE is about 0.506.
-
-lasso.out = glmnet(x, y, alpha = 1)
-predict(lasso.out, type = "coefficients", s = bestlambda.lasso)
-
-#The coefficients have been shrunken towards 0; most notably, the lcp variable
-#has dropped out first and has a coefficient of exactly 0. Other variables like
-#gleason, pgg45, and age have pretty small coefficient values as well. Similar
-#to the ridge regression scenario, the svi, lweight, and lcavol all have the
-#largest coefficient estimates.
 
 lasso.bestlambda = predict(lasso.out, s = bestlambda.lasso, newx = x)
 mean((lasso.bestlambda - y)^2)
 
-#The overall MSE is about 0.45996. Again, this is similar to the test MSE we
-#found above, but a little bit lower because of the way in which the model was
+#The overall MSE is about 0.02578685. but a little bit lower because of the way in which the model was
 #fit using the data at hand.
 
-predict(ridge.out, type = "coefficients", s = bestlambda.ridge)
+#predict(ridge.out, type = "coefficients", s = bestlambda.ridge)
 predict(lasso.out, type = "coefficients", s = bestlambda.lasso)
-mean((ridge.bestlambda - y)^2)
+#mean((ridge.bestlambda - y)^2)
 mean((lasso.bestlambda - y)^2)
 
 #Both models appear to perform in a similar manner. Both the test MSEs and the
