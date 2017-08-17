@@ -400,10 +400,14 @@ clean_prop$censustractandblock = as.integer(as.factor(prop$censustractandblock))
 ############################################################################################
 ## add latitude / longitude cluster
 ##
+
+# Sys.time()
+# set.seed(123)
 # clust_df = data.frame(latitude = clean_prop$latitude, longitude=clean_prop$longitude)#, logerror=clean_prop$logerror)
 # km_model = kcca(clust_df, k=30, kccaFamily("kmeans"))
+# Sys.time()
 # clean_prop$long_lat_cluster = as.factor(predict(km_model, clust_df))
-
+# Sys.time()
 
 ################################################
 ##  add numeric columns additional as feature
@@ -528,15 +532,6 @@ t = clean_prop[, .(count=length(id_parcel)), by=zoning_property]
 t = t[order(-t$count)][1:30,]
 clean_prop$zoning_property_fac = as.factor(ifelse(clean_prop$zoning_property %in% t$zoning_property, clean_prop$zoning_property, 0))
 
-################################################
-##  add logerror quantile
-##  
-
-qt = quantile(clean_prop$logerror, c(1/3, 2/3))
-clean_prop$logerror_q3 = ifelse(clean_prop$logerror<=qt[1], 1, 
-                                ifelse(clean_prop$logerror<=qt[2], 2, 3))
-
-clean_prop$logerror_q3 = as.factor(clean_prop$logerror_q3)
 
 ################################################
 ##  clean_prop-up
@@ -618,7 +613,21 @@ imp = as.data.table(
     inner_join(imp_prop, by="id_parcel")
 )
 
+imp$date = NULL
+imp$logerror = NULL
+
+clean$date = as.Date(clean$date)
 clean$month_factor = as.factor(month(clean$date))
 clean$month = month(clean$date)
+
+################################################
+##  add logerror quantile
+##  
+
+qt = quantile(clean$logerror, c(1/3, 2/3))
+clean$logerror_q3 = ifelse(clean$logerror<=qt[1], 1, 
+                                ifelse(clean$logerror<=qt[2], 2, 3))
+
+clean$logerror_q3 = as.factor(clean$logerror_q3)
 
 

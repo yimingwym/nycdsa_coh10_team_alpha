@@ -16,6 +16,11 @@ train_data = all_data[train_inx, cn, with=F]
 test_data = all_data[-train_inx, cn, with=F]
 
 set.seed(100)
+Sys.time()
+tree.rand = randomForest(logerror ~ ., data = train_data, importance = TRUE)
+Sys.time()
+
+
 oob.err = numeric(15)
 fits = vector("list",15)
 for (mtry in 13:13) {
