@@ -1,4 +1,6 @@
-# preliminary xgb model done 
+# preliminary xgb model done, run time 1 - 4 min
+# negative R^2 of test error (not training error) suprised me
+# however through feature selection I believe we could gain performance improvement for sure
 
 library(dplyr)
 library(xgboost)
@@ -178,4 +180,4 @@ rsqr
 
 # test error R^2: -1.708695
 
-# preliminary model is done, next: tune the model and try on different data
+# preliminary model is done, next: tune model; try on different data
