@@ -11,17 +11,17 @@ all_data = cbind(clean, imp[,-1])
 
 
 all_data$logerror_q3 = NULL
-
+all_data$date = NULL
 #remove outlier
 #all_data = all_data[logerror>-0.8 & logerror<0.8]
 
 #all_data$is_zoning_landuse_county.10 = as.factor(all_data$zoning_landuse_county == 10)
 
 set.seed(2344)
-train_inx = sample(1:nrow(all_data), nrow(all_data)*0.7)
+train_inx = sample(1:nrow(all_data), nrow(all_data)*0.8)
 test_inx = (1:nrow(all_data))[-train_inx]
-reserve_inx = 1:(length(test_inx)*1/3)
-test_inx = test_inx[-reserve_inx]
+# reserve_inx = 1:(length(test_inx)*1/3)
+# test_inx = test_inx[-reserve_inx]
 
 #all_data$date = as.numeric(all_date$date)
 #selectedColNames = colnames(imp)
@@ -34,6 +34,7 @@ remainingColNames = remainingColNames[-which(remainingColNames %in% c("id_parcel
 
 complexity_threshold = 0.003
 complexity_threshold_dec = 0
+best_complexity_threshold = complexity_threshold
 bestError = 1000
 while (length(remainingColNames>0))
 {
@@ -52,7 +53,7 @@ while (length(remainingColNames>0))
 
     prediction = predict(testModel, test_data)
     prediction = prediction[!is.na(prediction)]
-    err = median(abs(test_data$logerror - prediction))
+    err = mean(abs(test_data$logerror - prediction))
     if (err<minError){
       print(paste0("new bestError: ", as.character(err), collapse = ""))
       minError = err
@@ -68,16 +69,18 @@ while (length(remainingColNames>0))
     bestError = minError
     print(paste0("new bestError: ", as.character(bestError), collapse = ""))
     print(paste0("selected column: ", bestCol, collapse = ""))
+    best_complexity_threshold = complexity_threshold
   }
   else
   {
     complexity_threshold_dec = complexity_threshold_dec + 1
-    if (complexity_threshold_dec>6)
+    if (complexity_threshold_dec>6 | complexity_threshold<=-0.0005)
       break
     cat("no best found, reduce complexity threshold: ", complexity_threshold_dec, "\n")
     print(paste0("bestError: ", as.character(bestError), collapse = ""))
     print(paste0("selected column: ", bestCol, collapse = ""))    
     complexity_threshold = complexity_threshold -0.0005
+    cat("new complexity_threshold: ", complexity_threshold, "\n")
   }
   
   selectedColNames = c(selectedColNames, bestCol)

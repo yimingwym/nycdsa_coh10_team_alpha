@@ -1,0 +1,624 @@
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(DT)
+library(tidyr)
+library(corrplot)
+library(leaflet)
+library(lubridate)
+library(mice)
+library(stats)
+library(flexclust)
+library(ade4)
+
+############################################################################################
+###################### Stephan, creates clean_proped, imputation free data ######################
+############################################################################################
+#
+#   data loading and renaming
+#
+
+
+properties <- fread('properties_2016.csv')
+transactions <- fread('train_2016_v2.csv')
+#sample_submission <- fread('./data/sample_submission.csv')
+
+properties <- properties %>% rename(
+  id_parcel = parcelid,
+  build_year = yearbuilt,
+  area_basement = basementsqft,
+  area_patio = yardbuildingsqft17,
+  area_shed = yardbuildingsqft26, 
+  area_pool = poolsizesum,  
+  area_lot = lotsizesquarefeet, 
+  area_garage = garagetotalsqft,
+  area_firstfloor_finished = finishedfloor1squarefeet,
+  area_total_calc = calculatedfinishedsquarefeet,
+  area_base = finishedsquarefeet6,
+  area_live_finished = finishedsquarefeet12,
+  area_liveperi_finished = finishedsquarefeet13,
+  area_total_finished = finishedsquarefeet15,  
+  area_unknown = finishedsquarefeet50,
+  num_unit = unitcnt, 
+  num_story = numberofstories,  
+  num_room = roomcnt,
+  num_bathroom = bathroomcnt,
+  num_bedroom = bedroomcnt,
+  num_bathroom_calc = calculatedbathnbr,
+  num_bath = fullbathcnt,  
+  num_75_bath = threequarterbathnbr, 
+  num_fireplace = fireplacecnt,
+  num_pool = poolcnt,  
+  num_garage = garagecarcnt,  
+  region_county = regionidcounty,
+  region_city = regionidcity,
+  region_zip = regionidzip,
+  region_neighbor = regionidneighborhood,  
+  tax_total = taxvaluedollarcnt,
+  tax_building = structuretaxvaluedollarcnt,
+  tax_land = landtaxvaluedollarcnt,
+  tax_property = taxamount,
+  tax_year = assessmentyear,
+  tax_delinquency = taxdelinquencyflag,
+  tax_delinquency_year = taxdelinquencyyear,
+  zoning_property = propertyzoningdesc,
+  zoning_landuse = propertylandusetypeid,
+  zoning_landuse_county = propertycountylandusecode,
+  flag_fireplace = fireplaceflag, 
+  flag_tub = hashottuborspa,
+  quality = buildingqualitytypeid,
+  framing = buildingclasstypeid,
+  material = typeconstructiontypeid,
+  deck = decktypeid,
+  story = storytypeid,
+  heating = heatingorsystemtypeid,
+  aircon = airconditioningtypeid,
+  architectural_style= architecturalstyletypeid
+)
+
+transactions <- transactions %>% rename(
+  id_parcel = parcelid,
+  date = transactiondate
+)
+
+#properties <- properties %>% 
+#  mutate(tax_delinquency = ifelse(tax_delinquency=="Y",1,0),
+#         flag_fireplace = ifelse(flag_fireplace=="Y",1,0),
+#         flag_tub = ifelse(flag_tub=="Y",1,0))
+
+prop = properties
+
+# sales = as.data.table(
+#   transactions %>%
+#     inner_join(properties, by="id_parcel")
+# )
+
+
+clean_prop = data.table(id_parcel = prop$id_parcel)#, date=as.Date(prop$date), logerror=prop$logerror)
+imp_prop = data.table(id_parcel = prop$id_parcel)
+
+
+
+################################################
+##  build_year
+
+imp_prop$build_year_isna = is.na(prop$build_year)
+clean_prop$build_year = ifelse(imp_prop$build_year_isna, 0, prop$build_year)
+
+
+################################################
+##  garagetotalsqft (area_garage)
+##  num_garage
+##
+##  Total number of square feet of all garages on lot including an attached garage.
+
+imp_prop$num_garage_isna = is.na(prop$num_garage)
+clean_prop$num_garage = ifelse(is.na(prop$num_garage), 0, prop$num_garage)
+
+imp_prop$area_garage_isna = is.na(prop$area_garage)
+clean_prop$area_garage = ifelse(is.na(prop$area_garage), 0, prop$area_garage)
+
+# calc avg. garage size
+avg_garage_area = (properties %>% 
+                     filter(num_garage>0 & area_garage>0) %>% 
+                     summarize(sum(area_garage)/sum(num_garage)))[1,1]
+
+print(paste0("avg. garage area: ", avg_garage_area))
+
+imp_prop$num_garage_1_new = clean_prop$area_garage>0 & clean_prop$num_garage==0
+
+clean_prop$num_garage_1 = ifelse(
+  imp_prop$num_garage_1_new, 
+  1, 
+  clean_prop$num_garage
+)
+
+imp_prop$area_garage_1_new = clean_prop$num_garage>0 & clean_prop$area_garage==0
+
+clean_prop$area_garage_1 =  ifelse(
+  imp_prop$area_garage_1_new,
+  clean_prop$num_garage * avg_garage_area,
+  clean_prop$area_garage
+)     
+
+################################################
+## area_basement
+## area_patio
+## area_shed
+## area_lot
+## area_firstfloor_finished
+## area_total_calc
+## area_base
+## area_live_finished
+## area_liveperi_finished
+## area_total_finished
+## area_unknown
+
+imp_prop$area_basement_isna = is.na(prop$area_basement)
+clean_prop$area_basement = ifelse(is.na(prop$area_basement), 0, prop$area_basement)
+
+imp_prop$area_patio_isna = is.na(prop$area_patio)
+clean_prop$area_patio = ifelse(is.na(prop$area_patio), 0, prop$area_patio)
+
+imp_prop$area_shed_isna = is.na(prop$area_shed)
+clean_prop$area_shed = ifelse(is.na(prop$area_shed), 0, prop$area_shed)
+
+imp_prop$area_lot_isna = is.na(prop$area_lot)
+clean_prop$area_lot = ifelse(is.na(prop$area_lot), 0, prop$area_lot)
+
+imp_prop$area_firstfloor_finished_isna = is.na(prop$area_firstfloor_finished)
+clean_prop$area_firstfloor_finished = ifelse(is.na(prop$area_firstfloor_finished), 0, prop$area_firstfloor_finished)
+
+imp_prop$area_total_calc_isna = is.na(prop$area_total_calc)
+clean_prop$area_total_calc = ifelse(is.na(prop$area_total_calc), 0, prop$area_total_calc)
+
+imp_prop$area_base_isna = is.na(prop$area_base)
+clean_prop$area_base = ifelse(is.na(prop$area_base), 0, prop$area_base)
+
+imp_prop$area_live_finished_isna = is.na(prop$area_live_finished)
+clean_prop$area_live_finished = ifelse(is.na(prop$area_live_finished), 0, prop$area_live_finished)
+
+imp_prop$area_liveperi_finished_isna = is.na(prop$area_liveperi_finished)
+clean_prop$area_liveperi_finished = ifelse(is.na(prop$area_liveperi_finished), 0, prop$area_liveperi_finished)
+
+imp_prop$area_total_finished_isna = is.na(prop$area_total_finished)
+clean_prop$area_total_finished = ifelse(is.na(prop$area_total_finished), 0, prop$area_total_finished)
+
+imp_prop$area_unknown_isna = is.na(prop$area_unknown)
+clean_prop$area_unknown = ifelse(is.na(prop$area_unknown), 0, prop$area_unknown)
+
+imp_prop$area_no_lot_and_no_total = imp_prop$area_lot_isna & imp_prop$area_total_calc_isna
+
+#imp_prop$_isna = is.na(prop$)
+#clean_prop$ = ifelse(is.na(prop$), 0, prop$)
+
+################################################
+##  poolsizesum (area_pool)
+##  num_pool
+##  pooltypeid2
+##  pooltypeid7
+##  pooltypeid10
+##
+##  Total square footage of all pools on property.
+
+imp_prop$num_pool_isna = is.na(prop$num_pool)
+clean_prop$num_pool = ifelse(is.na(prop$num_pool), 0, prop$num_pool)
+
+imp_prop$area_pool_isna = is.na(prop$area_pool)
+clean_prop$area_pool = ifelse(is.na(prop$area_pool), 0, prop$area_pool)
+
+# calculate avg pool area
+avg_pool_area = (properties %>% 
+                   filter(num_pool>0 & area_pool>0) %>% 
+                   summarize(sum(area_pool)/sum(num_pool)))[1,1]
+
+print(paste0("avg. pool area: ", avg_pool_area))
+
+
+imp_prop$num_pool_1_new = clean_prop$area_pool>0 & clean_prop$num_pool==0
+
+clean_prop$num_pool_1 = ifelse(
+  imp_prop$num_pool_1_new, 
+  1, 
+  clean_prop$num_pool
+)
+
+imp_prop$area_pool_1_new = clean_prop$num_pool>0 & clean_prop$area_pool==0
+
+clean_prop$area_pool_1 =  ifelse(
+  imp_prop$area_pool_1_new,
+  clean_prop$num_pool * avg_pool_area,
+  clean_prop$area_pool
+)     
+
+imp_prop$pooltypeid2_isna = is.na(prop$pooltypeid2)
+clean_prop$pooltypeid2 = ifelse(imp_prop$pooltypeid2_isna, 0, prop$pooltypeid2)
+
+imp_prop$pooltypeid7_isna = is.na(prop$pooltypeid7)
+clean_prop$pooltypeid7 = ifelse(imp_prop$pooltypeid7_isna, 0, prop$pooltypeid7)
+
+imp_prop$pooltypeid10_isna = is.na(prop$pooltypeid10)
+clean_prop$pooltypeid10 = ifelse(imp_prop$pooltypeid10_isna, 0, prop$pooltypeid10)
+
+
+################################################
+##  region_city
+##  region_neighbor
+##  region_county
+##  region_zip
+##
+
+imp_prop$region_city_isna = is.na(prop$region_city)
+clean_prop$region_city = as.integer(as.factor(ifelse(imp_prop$region_city_isna, 0, prop$region_city)))
+
+imp_prop$region_neighbor_isna = is.na(prop$region_neighbor)
+clean_prop$region_neighbor = as.integer(as.factor(ifelse(imp_prop$region_neighbor_isna, 0, prop$region_neighbor)))
+
+imp_prop$region_county_isna = is.na(prop$region_county)
+clean_prop$region_county = as.factor(ifelse(imp_prop$region_county_isna, 0, prop$region_county))
+
+imp_prop$region_zip_isna = is.na(prop$region_zip)
+clean_prop$region_zip = as.integer(as.factor(ifelse(imp_prop$region_zip_isna, 0, prop$region_zip)))
+
+################################################
+##  zoning_landuse_county
+##  zoning_landuse
+##  zoning_property
+
+# no missing values
+clean_prop$zoning_landuse_county = as.integer(as.factor(prop$zoning_landuse_county))
+
+# no missing values
+clean_prop$zoning_landuse = as.factor(prop$zoning_landuse)
+
+# no missing values
+clean_prop$zoning_property = as.integer(as.factor(prop$zoning_property))
+
+################################################
+##  num_room
+##  num_unit
+##  num_story
+##  num_bathroom
+##  num_bedroom
+##  num_bathroom_calc
+##  num_bath
+##  num_75_bath
+##  num_fireplace
+
+#num_room is always set
+clean_prop$num_room = prop$num_room
+
+imp_prop$num_story_isna = is.na(prop$num_story)
+clean_prop$num_story = as.factor(ifelse(imp_prop$num_story_isna, 0, prop$num_story))
+
+imp_prop$num_unit_isna = is.na(prop$num_unit)
+clean_prop$num_unit = ifelse(imp_prop$num_unit_isna, 0, prop$num_unit)
+
+imp_prop$num_bathroom_isna = is.na(prop$num_bathroom)
+clean_prop$num_bathroom = ifelse(imp_prop$num_bathroom_isna, 0, prop$num_bathroom)
+
+imp_prop$num_bedroom_isna = is.na(prop$num_bedroom)
+clean_prop$num_bedroom = ifelse(imp_prop$num_bedroom_isna, 0, prop$num_bedroom)
+
+imp_prop$num_bathroom_calc_isna = is.na(prop$num_bathroom_calc)
+clean_prop$num_bathroom_calc = ifelse(imp_prop$num_bathroom_calc_isna, 0, prop$num_bathroom_calc)
+
+imp_prop$num_bath_isna = is.na(prop$num_bath)
+clean_prop$num_bath = ifelse(imp_prop$num_bath_isna, 0, prop$num_bath)
+
+imp_prop$num_75_bath_isna = is.na(prop$num_75_bath)
+clean_prop$num_75_bath = ifelse(imp_prop$num_75_bath_isna, 0, prop$num_75_bath)
+
+imp_prop$num_fireplace_isna = is.na(prop$num_fireplace)
+clean_prop$num_fireplace = ifelse(imp_prop$num_fireplace_isna, 0, prop$num_fireplace)
+
+imp_prop$num_fireplace_imp = is.na(prop$num_fireplace) & prop$flag_fireplace=="true"
+clean_prop$num_fireplace = ifelse(imp_prop$num_fireplace_imp, 1, clean_prop$num_fireplace)
+
+################################################
+##  tax_total
+##  tax_building
+##  tax_land
+##  tax_property
+##  tax_year
+##  tax_delinquency
+##  tax_delinquency_year
+##
+
+imp_prop$tax_total_isna = is.na(prop$tax_total)
+clean_prop$tax_total = ifelse(imp_prop$tax_total_isna, 0, prop$tax_total)
+
+imp_prop$tax_building_isna = is.na(prop$tax_building)
+clean_prop$tax_building = ifelse(imp_prop$tax_building_isna, 0, prop$tax_building)
+
+imp_prop$tax_land_isna = is.na(prop$tax_land)
+clean_prop$tax_land = ifelse(imp_prop$tax_land_isna, 0, prop$tax_land)
+
+imp_prop$tax_property_isna = is.na(prop$tax_property)
+clean_prop$tax_property = ifelse(imp_prop$tax_property_isna, 0, prop$tax_property)
+
+# tax_year has always the same value; drop it;
+
+clean_prop$tax_delinquency = ifelse(prop$tax_delinquency=="Y", 1, 0)
+
+imp_prop$tax_delinquency_year_isna = is.na(prop$tax_delinquency_year)
+clean_prop$tax_delinquency_year = ifelse(imp_prop$tax_delinquency_year_isna, 0, prop$tax_delinquency_year)
+
+#imp_prop$_isna = is.na(prop$)
+#clean_prop$ = ifelse(imp_prop$_isna, 0, prop$)
+
+################################################
+##  material
+##  deck
+##  quality
+##  framing
+##  story
+##  heating
+##  aircon
+##  architectural_style
+##  flag_tub
+
+clean_prop$material = ifelse(is.na(prop$material), 0 , prop$material)
+
+clean_prop$material = factor(clean_prop$material, 0:18, labels=c('NA', 'Adobe', 'Brick', 'Concrete Block', 'Concrete', 'Dome', 'Frame', 
+                                                       'Heavy', 'Log', 'Light', 'Metal', 'Manufactured', 'Mixed', 'Masonry', 
+                                                       'Other', 'Steel', 'Stone', 'Tilt-Up', 'Wood'))
+
+clean_prop$deck = as.factor(ifelse(is.na(prop$deck), 0, prop$deck))
+
+clean_prop$quality = as.factor(ifelse(is.na(prop$quality), 0, prop$quality))
+
+clean_prop$framing = as.factor(ifelse(is.na(prop$framing), 0, prop$framing))
+
+clean_prop$story = as.factor(ifelse(is.na(prop$story), 0, prop$story))
+
+clean_prop$heating = as.factor(ifelse(is.na(prop$heating), 0, prop$heating))
+
+clean_prop$aircon = as.factor(ifelse(is.na(prop$aircon), 0, prop$aircon))
+
+clean_prop$architectural_style = as.factor(ifelse(is.na(prop$architectural_style), 0, prop$architectural_style))
+
+clean_prop$flag_tub = ifelse(prop$flag_tub=="true", 1, 0)
+
+
+################################################
+##  longitude
+##  latitude
+
+clean_prop$longitude = ifelse(is.na(prop$longitude), 0, prop$longitude)
+clean_prop$latitude = ifelse(is.na(prop$latitude), 0, prop$latitude)
+
+################################################
+##  censustractandblock
+##  
+
+clean_prop$censustractandblock = as.integer(as.factor(prop$censustractandblock))
+
+
+############################################################################################
+############################################################################################
+## add latitude / longitude cluster
+##
+# clust_df = data.frame(latitude = clean_prop$latitude, longitude=clean_prop$longitude)#, logerror=clean_prop$logerror)
+# km_model = kcca(clust_df, k=30, kccaFamily("kmeans"))
+# clean_prop$long_lat_cluster = as.factor(predict(km_model, clust_df))
+
+
+################################################
+##  add numeric columns additional as feature
+##
+
+#clean_prop$month_factor = as.factor(month(clean_prop$date))
+#clean_prop$month = month(clean_prop$date)
+clean_prop$num_garage_fac=as.factor(clean_prop$num_garage)
+clean_prop$num_garage_1_fac=as.factor(clean_prop$num_garage_1)
+clean_prop$num_pool_fac=as.factor(clean_prop$num_pool)
+clean_prop$num_pool_1_fac=as.factor(clean_prop$num_pool_1)
+clean_prop$num_room_fac=as.factor(clean_prop$num_room)
+clean_prop$num_story_fac=as.factor(clean_prop$num_story)
+#clean_prop$num_unit_fac=as.factor(clean_prop$num_unit)
+clean_prop$num_bathroom_fac=as.factor(clean_prop$num_bathroom)
+clean_prop$num_bedroom_fac=as.factor(clean_prop$num_bedroom)
+clean_prop$num_bath_fac=as.factor(clean_prop$num_bath)
+clean_prop$num_75_bath_fac=as.factor(clean_prop$num_75_bath)
+clean_prop$num_fireplace_fac=as.factor(clean_prop$num_fireplace)
+
+
+##############################################################################
+##############################################################################
+#
+#   unfolding 
+#
+
+# # region_zip unfold
+# t = select(clean_prop, region_zip)
+# t$region_zip = as.factor(t$region_zip)
+# df_region_zip = data.frame(sapply(acm.disjonctif(t), as.factor))
+# 
+# # region_county unfold
+# t = select(clean_prop, region_county)
+# t$region_county = as.factor(t$region_county)
+# df_region_county = data.frame(sapply(acm.disjonctif(t), as.factor))
+# 
+# # region_neighbor unfold
+# t = select(clean_prop, region_neighbor)
+# t$region_neighbor = as.factor(t$region_neighbor)
+# df_region_neighbor = data.frame(sapply(acm.disjonctif(t), as.factor))
+# 
+# # region_city unfold
+# t = select(clean_prop, region_city)
+# t$region_city = as.factor(t$region_city)
+# df_region_city = data.frame(sapply(acm.disjonctif(t), as.factor))
+# 
+# # zoning_landuse_county unfold
+# t = select(clean_prop, zoning_landuse_county)
+# t$zoning_landuse_county = as.factor(t$zoning_landuse_county)
+# df_zoning_landuse_county = data.frame(sapply(acm.disjonctif(t), as.factor))
+# 
+# # zoning_landuse unfold
+# t = select(clean_prop, zoning_landuse)
+# t$zoning_landuse = as.factor(t$zoning_landuse)
+# df_zoning_landuse = data.frame(sapply(acm.disjonctif(t), as.factor))
+# 
+# # investigate zoning_property unfold
+# t = select(clean_prop, zoning_property)
+# t$zoning_property = as.factor(t$zoning_property)
+# df_zoning_property = data.frame(sapply(acm.disjonctif(t), as.factor))
+# 
+# 
+# ####################################
+# UNFOLDING_MIN_COUNT_THRESHOLD = 300
+# 
+# #add zoning_landuse_county
+# inx = sapply(df_zoning_landuse_county, function(c) sum(c==1)) > UNFOLDING_MIN_COUNT_THRESHOLD
+# df = df_zoning_landuse_county[, inx]
+# df$logerror = NULL
+# clean_prop = cbind(clean_prop, df)
+# 
+# # add region_zip
+# inx = sapply(df_region_zip, function(c) sum(c==1)) > UNFOLDING_MIN_COUNT_THRESHOLD
+# df = df_region_zip[, inx]
+# df$logerror = NULL
+# clean_prop = cbind(clean_prop, df)
+# 
+# # add region_county
+# df = df_region_county
+# df$logerror = NULL
+# all_data = cbind(all_data, df)
+# 
+# # add region_neighbor
+# inx = sapply(df_region_neighbor, function(c) sum(c==1)) > UNFOLDING_MIN_COUNT_THRESHOLD
+# df = df_region_neighbor[, inx]
+# df$logerror = NULL
+# clean_prop = cbind(clean_prop, df)
+# 
+# # add zoning_landuse
+# inx = sapply(df_zoning_landuse, function(c) sum(c==1)) > UNFOLDING_MIN_COUNT_THRESHOLD
+# df = df_zoning_landuse[, inx]
+# df$logerror = NULL
+# clean_prop = cbind(clean_prop, df)
+# 
+# # add zoning_property
+# inx = sapply(df_zoning_property, function(c) sum(c==1)) > UNFOLDING_MIN_COUNT_THRESHOLD
+# df = df_zoning_property[, inx]
+# df$logerror = NULL
+# clean_prop = cbind(clean_prop, df)
+
+########################
+# add top 30 of each long factor as factor
+
+t = clean_prop[, .(count=length(id_parcel)), by=region_neighbor]
+t = t[order(-t$count)][1:30,]
+clean_prop$region_neigbor_fac = as.factor(ifelse(clean_prop$region_neighbor %in% t$region_neighbor, clean_prop$region_neighbor, 0))
+
+t = clean_prop[, .(count=length(id_parcel)), by=region_zip]
+t = t[order(-t$count)][1:30,]
+clean_prop$region_zip_fac = as.factor(ifelse(clean_prop$region_zip %in% t$region_zip, clean_prop$region_zip, 0))
+
+t = clean_prop[, .(count=length(id_parcel)), by=zoning_landuse_county]
+t = t[order(-t$count)][1:30,]
+clean_prop$zoning_landuse_county_fac = as.factor(ifelse(clean_prop$zoning_landuse_county %in% t$zoning_landuse_county, clean_prop$zoning_landuse_county, 0))
+
+t = clean_prop[, .(count=length(id_parcel)), by=zoning_landuse]
+t = t[order(-t$count)][1:30,]
+clean_prop$zoning_landuse_fac = as.factor(ifelse(clean_prop$zoning_landuse %in% t$zoning_landuse, clean_prop$zoning_landuse, 0))
+
+t = clean_prop[, .(count=length(id_parcel)), by=zoning_property]
+t = t[order(-t$count)][1:30,]
+clean_prop$zoning_property_fac = as.factor(ifelse(clean_prop$zoning_property %in% t$zoning_property, clean_prop$zoning_property, 0))
+
+################################################
+##  add logerror quantile
+##  
+
+qt = quantile(clean_prop$logerror, c(1/3, 2/3))
+clean_prop$logerror_q3 = ifelse(clean_prop$logerror<=qt[1], 1, 
+                                ifelse(clean_prop$logerror<=qt[2], 2, 3))
+
+clean_prop$logerror_q3 = as.factor(clean_prop$logerror_q3)
+
+################################################
+##  clean_prop-up
+##  
+rm(avg_garage_area)
+rm(avg_pool_area)
+rm(km_model)
+rm(qt)
+rm(UNFOLDING_MIN_COUNT_THRESHOLD)
+rm(t)
+rm(clust_df)
+rm(inx)
+############################################################################################
+############################################################################################
+############################################################################################
+
+
+# missing_values <- clean_prop %>% summarize_each(funs(sum(is.na(.))/n()))
+# 
+# missing_values <- gather(missing_values, key="feature", value="missing_pct")
+# missing_values %>% 
+#   ggplot(aes(x=reorder(feature,-missing_pct),y=missing_pct)) +
+#   geom_bar(stat="identity",fill="red")+
+#   coord_flip()+theme_bw()
+# 
+############################################################################################
+################### Yiming, updates, adds fips_blockid column in clean_prop data ################
+############################################################################################
+
+##### I don't find rawcensustractandblock in clean_prop, which is a very informative column.
+
+##### Introduce and extract the blockid from rawcensustractandblock column in prop
+##### For example: 60371066.461001: '6037'(County id or so called 'fips')
+#####                               '1066.46' (block id, 4 digits before and 2 digits after dot)
+#####                               omit the rest digits
+
+clean_prop$rawcensustractandblock <- prop$rawcensustractandblock
+clean_prop$fips_blockid <- sapply(clean_prop$rawcensustractandblock, function(x) substr(x, 1, 11))
+clean_prop$rawcensustractandblock <- NULL
+
+##### add NA tag column of censustractandblock in imp_prop, set NAs in clean_prop$censustractandblock to 0
+imp_prop$censustractandblock_isna = is.na(prop$censustractandblock)
+clean_prop$censustractandblock = prop$censustractandblock
+clean_prop$censustractandblock[imp_prop$censustractandblock_isna] <- 0
+
+# #### before mice impute
+# data_sale_mice <- clean_prop %>% select(aircon, heating, logerror, latitude, longitude, fips_blockid)
+# data_sale_mice$region_zip <- prop$region_zip
+# data_sale_mice$aircon_isna <- is.na(data_sale_mice$aircon)
+# data_sale_mice$heating_isna <- is.na(data_sale_mice$heating)
+# data_sale_mice$region_zim_isna <- is.na(data_sale_mice$region_zip)
+# data_sale_mice$region_zip[data_sale$region_zip == 399675] <- 99675
+# 
+# ##### imputation train
+# mice_mod <- mice(data_sale_mice, method='rf') 
+# mice_output <- complete(mice_mod)
+# 
+# ##### imputation
+# data_sale_mice$airconimp <- mice_output$aircon
+# data_sale_mice$heatingimp <- mice_output$heating
+# data_sale_mice$region_zip <- mice_output$region_zip
+# ##### The mice imputation seems perfect! histograms matches perfectly!
+# ##### Much better than the result (aircon, heating) from missForest
+
+
+
+sales = as.data.table(
+  transactions %>%
+    inner_join(properties, by="id_parcel")
+)
+
+clean = as.data.table(
+  transactions %>%
+    inner_join(clean_prop, by="id_parcel")
+)
+
+imp = as.data.table(
+  transactions %>%
+    inner_join(imp_prop, by="id_parcel")
+)
+
+clean$month_factor = as.factor(month(clean$date))
+clean$month = month(clean$date)
+
+
