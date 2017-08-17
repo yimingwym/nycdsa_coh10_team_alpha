@@ -42,7 +42,7 @@ param <- list(  objective           = "reg:linear",
 )
 
 bstSparse <- xgb.train(param,
-                       data = dtrain, 
+                       data                  = dtrain, 
                        nrounds               = 1000, 
                        verbose               = 1,
                        print_every_n         = 10L
@@ -180,4 +180,4 @@ rsqr
 
 # test error R^2: -1.708695
 
-# preliminary model is done, next: tune model; try on different data
+# preliminary model is done, next: model tuning; try on different data
