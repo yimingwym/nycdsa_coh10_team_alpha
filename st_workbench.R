@@ -64,25 +64,40 @@ for (k in 33:50){
   #cat("k=", k, " perf=", perf, "\n")
 }
 
-
-
-
 ##############################################################
-cl1 = kcca(clust_data, k=11, kccaFamily("kmeans"))
+
+convertFactorToDummyTable = function(factor_vec, feature_name, min_count=0)
+{
+  ft = data.table(id = 1:length(factor_vec), fac = factor_vec)
+  t = ft[, .(count=length(id)), by=fac]
+  t = t[count>=min_count]
+  
+  fac_mat = data.table(id = 1:length(factor_vec))
+  
+  for(fac_val in t$fac) {
+      tmp_mat = data.table((factor_vec == fac_val))
+      colnames(tmp_mat) = paste(feature_name, as.character(fac_val), sep = "_")
+      fac_mat = cbind(
+        fac_mat, 
+        tmp_mat
+      )
+  }
+  
+  fac_mat$id = NULL
+  return (fac_mat)
+}
+
+min_count = 300
+factor_vec = clean_prop$zoning_landuse
+feature_name = "region_neighbor"
+
+m = convertFactorToDummyTable(clean_prop$zoning_landuse, "zoning_landuse")
 
 
-clust_pred =  predict(cl1, clust_data)
-
-h.df = data.frame(logerror=clean$logerror, is.na_clust = clust_pred)
-tree = rpart(logerror ~ is.na_clust, data=h.df, method="anova", cp=0.001)
-tree
 
 
 
-##########################################################
 
-maxLong = max(all_data$longitude)
-minLong = min(all_data$longitude)
-maxLat = max(all_data$latitude)
-minLat = min(all_data$latitude)
+
+
 

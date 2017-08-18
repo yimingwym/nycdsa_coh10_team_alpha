@@ -267,10 +267,10 @@ clean_prop$region_zip = as.integer(as.factor(ifelse(imp_prop$region_zip_isna, 0,
 ##  zoning_property
 
 # no missing values
-clean_prop$zoning_landuse_county = as.integer(as.factor(prop$zoning_landuse_county))
+clean_prop$zoning_landuse_county = as.integer(as.factor(ifelse(is.na(prop$zoning_landuse_county), 0, prop$zoning_landuse_county)))
 
 # no missing values
-clean_prop$zoning_landuse = as.factor(prop$zoning_landuse)
+clean_prop$zoning_landuse = as.factor(ifelse(is.na(prop$zoning_landuse), 0, prop$zoning_landuse))
 
 # no missing values
 clean_prop$zoning_property = as.integer(as.factor(prop$zoning_property))
@@ -287,7 +287,7 @@ clean_prop$zoning_property = as.integer(as.factor(prop$zoning_property))
 ##  num_fireplace
 
 #num_room is always set
-clean_prop$num_room = prop$num_room
+clean_prop$num_room = ifelse(is.na(prop$num_room), 0, prop$num_room)
 
 imp_prop$num_story_isna = is.na(prop$num_story)
 clean_prop$num_story = as.factor(ifelse(imp_prop$num_story_isna, 0, prop$num_story))
@@ -432,101 +432,67 @@ clean_prop$num_fireplace_fac=as.factor(clean_prop$num_fireplace)
 ##############################################################################
 ##############################################################################
 #
-#   unfolding 
+#   unfolding to dummy columns 
 #
 
-# # region_zip unfold
-# t = select(clean_prop, region_zip)
-# t$region_zip = as.factor(t$region_zip)
-# df_region_zip = data.frame(sapply(acm.disjonctif(t), as.factor))
-# 
-# # region_county unfold
-# t = select(clean_prop, region_county)
-# t$region_county = as.factor(t$region_county)
-# df_region_county = data.frame(sapply(acm.disjonctif(t), as.factor))
-# 
-# # region_neighbor unfold
-# t = select(clean_prop, region_neighbor)
-# t$region_neighbor = as.factor(t$region_neighbor)
-# df_region_neighbor = data.frame(sapply(acm.disjonctif(t), as.factor))
-# 
-# # region_city unfold
-# t = select(clean_prop, region_city)
-# t$region_city = as.factor(t$region_city)
-# df_region_city = data.frame(sapply(acm.disjonctif(t), as.factor))
-# 
-# # zoning_landuse_county unfold
-# t = select(clean_prop, zoning_landuse_county)
-# t$zoning_landuse_county = as.factor(t$zoning_landuse_county)
-# df_zoning_landuse_county = data.frame(sapply(acm.disjonctif(t), as.factor))
-# 
-# # zoning_landuse unfold
-# t = select(clean_prop, zoning_landuse)
-# t$zoning_landuse = as.factor(t$zoning_landuse)
-# df_zoning_landuse = data.frame(sapply(acm.disjonctif(t), as.factor))
-# 
-# # investigate zoning_property unfold
-# t = select(clean_prop, zoning_property)
-# t$zoning_property = as.factor(t$zoning_property)
-# df_zoning_property = data.frame(sapply(acm.disjonctif(t), as.factor))
-# 
-# 
-# ####################################
-# UNFOLDING_MIN_COUNT_THRESHOLD = 300
-# 
-# #add zoning_landuse_county
-# inx = sapply(df_zoning_landuse_county, function(c) sum(c==1)) > UNFOLDING_MIN_COUNT_THRESHOLD
-# df = df_zoning_landuse_county[, inx]
-# df$logerror = NULL
-# clean_prop = cbind(clean_prop, df)
-# 
-# # add region_zip
-# inx = sapply(df_region_zip, function(c) sum(c==1)) > UNFOLDING_MIN_COUNT_THRESHOLD
-# df = df_region_zip[, inx]
-# df$logerror = NULL
-# clean_prop = cbind(clean_prop, df)
-# 
-# # add region_county
-# df = df_region_county
-# df$logerror = NULL
-# all_data = cbind(all_data, df)
-# 
-# # add region_neighbor
-# inx = sapply(df_region_neighbor, function(c) sum(c==1)) > UNFOLDING_MIN_COUNT_THRESHOLD
-# df = df_region_neighbor[, inx]
-# df$logerror = NULL
-# clean_prop = cbind(clean_prop, df)
-# 
-# # add zoning_landuse
-# inx = sapply(df_zoning_landuse, function(c) sum(c==1)) > UNFOLDING_MIN_COUNT_THRESHOLD
-# df = df_zoning_landuse[, inx]
-# df$logerror = NULL
-# clean_prop = cbind(clean_prop, df)
-# 
-# # add zoning_property
-# inx = sapply(df_zoning_property, function(c) sum(c==1)) > UNFOLDING_MIN_COUNT_THRESHOLD
-# df = df_zoning_property[, inx]
-# df$logerror = NULL
-# clean_prop = cbind(clean_prop, df)
+convertFactorToDummyTable = function(factor_vec, feature_name, min_count=100, verbose=F)
+{
+  ft = data.table(id = 1:length(factor_vec), fac = factor_vec)
+  t = ft[, .(count=length(id)), by=fac]
+  t = t[count>=min_count]
+  t = t[order(fac)]
+  
+  fac_mat = data.table(id = 1:length(factor_vec))
+  
+  i=1
+  for(fac_val in t$fac) {
+    if (verbose == T) {
+      cat("convertFactorToDummyTable for", feature_name, ": create bool vec for level ", as.character(fac_val), "(", i, "/", nrow(t), ")\n")
+    }
 
-########################
-# add top 30 of each long factor as factor
+    tmp_mat = data.table(v1=(factor_vec == fac_val))
+    colnames(tmp_mat) = paste(feature_name, as.character(fac_val), sep = "_")
+    
+    fac_mat = cbind(
+      fac_mat,
+      tmp_mat
+    )
+    i=i+1
+  }
+  
+  fac_mat$id = NULL
+  return (fac_mat)
+}
 
-t = clean_prop[, .(count=length(id_parcel)), by=region_neighbor]
-t = t[order(-t$count)][1:30,]
-clean_prop$region_neigbor_fac = as.factor(ifelse(clean_prop$region_neighbor %in% t$region_neighbor, clean_prop$region_neighbor, 0))
+# dummy_prop = data.table(id_parcel = clean_prop$id_parcel)
+# dummy_prop = cbind(dummy_prop, convertFactorToDummyTable(clean_prop$region_city, "region_city", verbose=T))
+# dummy_prop = cbind(dummy_prop, convertFactorToDummyTable(clean_prop$region_neighbor, "region_neighbor", verbose=T))
+# dummy_prop = cbind(dummy_prop, convertFactorToDummyTable(clean_prop$region_zip, "region_zip", verbose=T))
+# dummy_prop = cbind(dummy_prop, convertFactorToDummyTable(clean_prop$zoning_landuse_county, "zoning_landuse_county", verbose=T))
 
-t = clean_prop[, .(count=length(id_parcel)), by=region_zip]
-t = t[order(-t$count)][1:30,]
-clean_prop$region_zip_fac = as.factor(ifelse(clean_prop$region_zip %in% t$region_zip, clean_prop$region_zip, 0))
 
-t = clean_prop[, .(count=length(id_parcel)), by=zoning_landuse_county]
-t = t[order(-t$count)][1:30,]
-clean_prop$zoning_landuse_county_fac = as.factor(ifelse(clean_prop$zoning_landuse_county %in% t$zoning_landuse_county, clean_prop$zoning_landuse_county, 0))
+##############################################################################
+#
+#   expanding factors with many levels to multiple columns 
+#
 
-t = clean_prop[, .(count=length(id_parcel)), by=zoning_landuse]
-t = t[order(-t$count)][1:30,]
-clean_prop$zoning_landuse_fac = as.factor(ifelse(clean_prop$zoning_landuse %in% t$zoning_landuse, clean_prop$zoning_landuse, 0))
+big_factor_names =c("region_neighbor", "region_zip", "region_city", "zoning_landuse_county")
+
+for (big_factor_name in big_factor_names){
+  cat("expanding factors to multiple features for", big_factor_name, "\n")
+  t = clean_prop[, .(count=.N), by=mget(big_factor_name)]
+  t = t[order(-t$count)]
+  i=0
+  while (i<nrow(t)) {
+    start=i+1
+    end = i+30
+    lev = t[[big_factor_name]][start:end]
+    clean_prop[[paste(big_factor_name, "fac", start, end, sep="_")]] = as.factor(ifelse(clean_prop[[big_factor_name]] %in% lev, clean_prop[[big_factor_name]], 0))
+    i = i + 30
+  }
+}
+
+#region_city
 
 t = clean_prop[, .(count=length(id_parcel)), by=zoning_property]
 t = t[order(-t$count)][1:30,]
@@ -538,12 +504,15 @@ clean_prop$zoning_property_fac = as.factor(ifelse(clean_prop$zoning_property %in
 ##  
 rm(avg_garage_area)
 rm(avg_pool_area)
-rm(km_model)
 rm(qt)
-rm(UNFOLDING_MIN_COUNT_THRESHOLD)
 rm(t)
-rm(clust_df)
-rm(inx)
+rm(start)
+rm(end)
+rm(lev)
+rm(big_factor_name)
+rm(big_factor_names)
+rm(i)
+
 ############################################################################################
 ############################################################################################
 ############################################################################################
