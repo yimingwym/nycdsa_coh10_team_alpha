@@ -53,23 +53,6 @@ bestcp = cps[which(mae == min(mae))][1]
 # build "best" tree
 tree.best = rpart(logerror ~ ., data = all_data[, cn, with=F], method="anova", cp=0.0013)
 
-
-makePrediction <- function(model, newdata, months, labels, dates) {
-  predictions <- newdata[, "parcelid", drop=FALSE]
-  for(i in 1:length(months)) {
-    cat("month: ", months[i], "\n")
-    newdata$month <- months[i]
-    newdata$month_factor = factor(newdata$month, levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"))
-    #newdata$month_factor = as.factor(newdata$month)
-    predictions[, labels[i]] <- predict(model, newdata = newdata)
-  }
-  cat("write submission data to disk\n")
-  write.csv(x = predictions, file = "submission_simple_tree_v3.csv", 
-            quote = FALSE, row.names = FALSE)
-  return(predictions)
-}
-
-
 newdata = cbind(clean_prop, imp_prop[,-1])
 newdata$logerror_q3 = NULL
 

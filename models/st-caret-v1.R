@@ -1,4 +1,13 @@
+# setwd("C:/Projects/NYCDS/Projects/030 Machine Learning/data")
+# load(file="clean.dat")
+# load(file="imp.dat")
+# load(file="clean_prop.dat")
+# load(file="imp_prop.dat")
+
+
 library(caret)
+library(data.table)
+
 all_data = cbind(clean, imp[,-1])
 all_data$logerror_q3 = NULL
 
@@ -31,7 +40,7 @@ subTest  <- train_data[-trainIndex,]
 ## define metric - MAE
 maeSummary <- function(data, lev = NULL, model = NULL) {
   mae_score <- sum(abs(data$obs - data$pred)) / nrow(data)
-  names(mae_score) <- "MAE"
+  names(mae_score) <- "DENFIS"
   mae_score
 }
 
@@ -45,10 +54,10 @@ rdmSearch <- trainControl(method = "cv",
 gbmFit <- train(logerror ~ .,
                 data = subTrain, 
                 method = "gbm", 
-                preProcess = c("center", "scale"),
+                #preProcess = c("center", "scale"),
                 metric = "MAE",
                 maximize = FALSE,
-                tuneLength = 3,
+                tuneLength = 1,
                 trControl = rdmSearch,
                 verbose = TRUE)
 plot(gbmFit)
@@ -65,8 +74,8 @@ gbmGrid <-  expand.grid(interaction.depth = 3,
 
 gbmFit2 <- train(logerror ~ .,
                  data = subTrain, 
-                 method = "gbm", 
-                 preProcess = c("center", "scale"),
+                 method = "bstTree", 
+                 #preProcess = c("center", "scale"),
                  metric = "MAE",
                  maximize = FALSE,
                  tuneGrid = gbmGrid,

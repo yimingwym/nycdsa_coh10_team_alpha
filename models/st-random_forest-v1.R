@@ -1,5 +1,12 @@
 
+# load(file="clean.dat")
+# load(file="imp.dat")
+# load(file="clean_prop.dat")
+# load(file="imp_prop.dat")
+
 library(randomForest)
+library(data.table)
+library(dplyr)
 
 all_data = cbind(clean, imp[,-1])
 all_data$logerror_q3 = NULL
@@ -35,43 +42,8 @@ cat("baseline median abs err", median(abs(mean(all_data$logerror)-test_data$loge
 cat("baseline mean abs err", mean(abs(mean(all_data$logerror)-test_data$logerror)), "\n")
 cat("baseline mean square err: ", mean((mean(all_data$logerror)-test_data$logerror)^2), "\n")
 
-
-
-
-
-
-
-makePrediction <- function(model, newdata, months, labels, dates) {
-  predictions <- newdata[, "parcelid", drop=FALSE]
-  for(i in 1:length(months)) {
-    cat("month: ", months[i], "\n")
-    newdata$month <- months[i]
-    newdata$month_factor = factor(newdata$month, levels = levels(train_data$month_factor))
-    newdata$date = as.Date(dates[i])
-    predictions[, labels[i]] <- predict(model, newdata = newdata)
-  }
-  cat("write submission data to disk\n")
-  write.csv(x = predictions, file = "submission_randForest_1.csv", 
-            quote = FALSE, row.names = FALSE)
-  return(predictions)
-}
-
-newdata = cbind(clean_prop, imp_prop[,-1])
-newdata$parcelid = newdata$id_parcel
-newdata$date = as.Date("2016-06-11") # impute the median
-
-s = makePrediction(tree.rand, newdata = newdata, months = c(10),#, 11, 12, 10, 11, 12), 
-               labels = c("201610", "201611", "201612", "201710", "201711", "201712"), 
-               dates = c("2016-10-15", "2016-11-15", "2016-12-15", "2017-10-15", "2017-11-15", "2017-12-15") )
-
-
-
-levels(train_data$month_factor)
-
-colnames(newdata)[!colnames(newdata) %in% colnames(train_data)]
-
-colnames(train_data)[!colnames(train_data) %in% colnames(newdata)]
-
+saveRDS(tree.rand, file = "randForest_v1_initTree.dat")
+tree.rand = readRDS(file = "randForest_v1_initTree.dat")
 
 
 
