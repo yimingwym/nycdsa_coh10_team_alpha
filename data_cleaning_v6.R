@@ -589,6 +589,8 @@ clean$date = as.Date(clean$date)
 clean$month_factor = as.factor(month(clean$date))
 clean$month = month(clean$date)
 
+rm(prop)
+
 ################################################
 ##  add logerror quantile
 ##  
@@ -598,5 +600,5 @@ clean$logerror_q3 = ifelse(clean$logerror<=qt[1], 1,
                                 ifelse(clean$logerror<=qt[2], 2, 3))
 
 clean$logerror_q3 = as.factor(clean$logerror_q3)
-
+rm(qt)
 

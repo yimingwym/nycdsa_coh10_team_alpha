@@ -91,9 +91,9 @@ min_count = 300
 factor_vec = clean_prop$zoning_landuse
 feature_name = "region_neighbor"
 
-m = convertFactorToDummyTable(clean_prop$zoning_landuse, "zoning_landuse")
+m = convertFactorToDummyTable(clean_prop$zoning_landuse, "zoning_landuse", verbose=T)
 
-
+str(m)
 
 
 
