@@ -36,7 +36,7 @@ complexity_threshold = 0.003
 complexity_threshold_dec = 0
 best_complexity_threshold = complexity_threshold
 bestError = 1000
-while (length(remainingColNames>0))
+while (length(remainingColNames>0) & complexity_threshold>0)
 {
   minError = 1000
   bestCol = ""
@@ -53,7 +53,7 @@ while (length(remainingColNames>0))
 
     prediction = predict(testModel, test_data)
     prediction = prediction[!is.na(prediction)]
-    err = mean(abs(test_data$logerror - prediction))
+    err = median(abs(test_data$logerror - prediction))
     if (err<minError){
       print(paste0("new bestError: ", as.character(err), collapse = ""))
       minError = err

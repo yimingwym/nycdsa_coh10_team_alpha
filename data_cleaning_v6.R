@@ -476,7 +476,7 @@ convertFactorToDummyTable = function(factor_vec, feature_name, min_count=100, ve
 #   expanding factors with many levels to multiple columns 
 #
 
-big_factor_names =c("region_neighbor", "region_zip", "region_city", "zoning_landuse_county")
+big_factor_names =c("num_unit", "region_neighbor", "region_zip", "region_city", "zoning_landuse_county")
 
 for (big_factor_name in big_factor_names){
   cat("expanding factors to multiple features for", big_factor_name, "\n")
