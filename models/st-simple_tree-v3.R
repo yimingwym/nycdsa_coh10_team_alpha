@@ -59,7 +59,8 @@ makePrediction <- function(model, newdata, months, labels, dates) {
   for(i in 1:length(months)) {
     cat("month: ", months[i], "\n")
     newdata$month <- months[i]
-    newdata$month_factor = factor(newdata$month, levels = levels(c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"))
+    newdata$month_factor = factor(newdata$month, levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"))
+    #newdata$month_factor = as.factor(newdata$month)
     predictions[, labels[i]] <- predict(model, newdata = newdata)
   }
   cat("write submission data to disk\n")
@@ -74,8 +75,21 @@ newdata$logerror_q3 = NULL
 
 newdata$parcelid = newdata$id_parcel
 
-subm = makePrediction(tree.best, newdata = newdata, months = c(10),#, 11, 12, 10, 11, 12), 
-                   labels = c("201610", "201611", "201612", "201710", "201711", "201712"), 
-                   dates = c("2016-10-15", "2016-11-15", "2016-12-15", "2017-10-15", "2017-11-15", "2017-12-15") )
 
+months = c(10, 11, 12, 10, 11, 12)
+labels = c("201610", "201611", "201612", "201710", "201711", "201712")
+
+predictions <- newdata[, "parcelid", drop=FALSE]
+for(i in 1:length(months)) {
+  cat("month: ", months[i], "\n")
+  newdata$month <- months[i]
+  newdata$month_factor = factor(newdata$month, levels = c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"))
+  #newdata$month_factor = as.factor(newdata$month)
+  predictions[, labels[i]] <- predict(tree.best, newdata = newdata)
+}
+
+write.csv(x = predictions, file = "submission_simple_tree_v3.csv", 
+          quote = FALSE, row.names = FALSE)
+
+#sapply(predictions, function(c) sum(is.na(c)))
 

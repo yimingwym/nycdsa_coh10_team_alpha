@@ -602,3 +602,13 @@ clean$logerror_q3 = ifelse(clean$logerror<=qt[1], 1,
 clean$logerror_q3 = as.factor(clean$logerror_q3)
 rm(qt)
 
+################################################
+################################################
+#  SAVE
+
+# save(clean, file="clean.dat")
+# save(imp, file="imp.dat")
+# save(clean_prop, file="clean_prop.dat")
+# save(imp_prop, file="imp_prop.dat")
+
+
