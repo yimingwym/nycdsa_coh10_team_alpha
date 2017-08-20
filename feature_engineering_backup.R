@@ -150,3 +150,11 @@ prop$flag_tub <- as.factor(prop$flag_tub)
 prop$region_county <- as.factor(prop$region_county)
 prop$flag_fireplace <- as.factor(prop$flag_fireplace)
 prop$fips_blockid <- as.factor(prop$fips_blockid)
+                 
+                 
+                 
+#################################
+###sigmoid transformation on y###
+#################################
+                 
+# y_new = 1 / (1 + e ^ -(y_origin))
